@@ -47,6 +47,230 @@ The *two grids* scheme integrates the small-momentum flow equation (NLO or LO) o
     - can be added on top of the dimensionless flow in the factory `create.py`;
     - records the IC for the large-p equation; the integration of the large-p equation is performed elsewhere.
 
+## Install
+
+The package is not on PyPI and has no installer: clone the repository and install the pinned dependencies.
+
+```bash
+git clone <repository-url> BMWflow
+cd BMWflow
+pip install -r flow/requirements.txt   # numpy, scipy, numba, matplotlib
+pip install jupyter                    # only to run the notebooks in usage_examples/
+```
+
+To import `flow`, put the repository root on `sys.path` (the notebooks do this from `usage_examples/`):
+
+```python
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path.cwd().parent))   # path of the repository root
+```
+
+## Usage
+
+### Quickstart: 1D KPZ, NLO, two grids
+
+Condensed from `usage_examples/KPZ_1D_twogrids.ipynb`:
+
+```python
+import numpy as np
+from flow import flow_dataclasses, regulator, create
+
+# --- Model ---
+n_f = 2                  # KPZ: two flowing functions f_D, f_nu (and eta_D, eta_nu)
+approximation = "NLO"    # or "LO"
+dim = 1
+
+alpha, beta = 2, 1
+r  = lambda x: regulator.wett_alpha_beta(x, alpha, beta)    # regulator r(q)
+r_ = lambda x: regulator.wett_alpha_beta_(x, alpha, beta)   # its derivative
+
+N_p, p_min, p_max = 100, 0.01, 100
+N_w, w_min, w_max = 100, 0.01, 100
+q_max, deg_q, deg_theta = 4, 16, 10
+
+grid_ext = flow_dataclasses.ParamsGridExternal(N_p=N_p, p_min=p_min, p_max=p_max,
+                                               N_w=N_w, w_min=w_min, w_max=w_max)
+grid_int = flow_dataclasses.ParamsGridInternal(deg_q=deg_q, q_max=q_max, deg_theta=deg_theta)
+model_params = (n_f, approximation, dim, grid_ext, grid_int, r, r_)
+
+# --- Dimensionless evolution ---
+IC = flow_dataclasses.IC_NLO(g_in=1.0,
+                             etas_in=np.zeros(n_f),
+                             fs_in=np.ones((n_f, N_p, N_w)))
+ds = 0.001
+evo_params = (IC, ds, "KPZ_1D_twogrids")   # results are written to this directory
+
+# --- Dimensionful (second) grid ---
+evo_two_params = dict(
+    X_dimful_in=np.array([1., 1.]),        # [D, nu] at kappa = Lambda
+    match_w_to_p_two=True,                 # w_two = p_two**2
+    p_exit=q_max,
+    Np_two=200, p_min_two=0.01, p_max_two=q_max,
+    Nw_two=200, w_min_two=None, w_max_two=None,
+    scale="log",
+    s_fin_all_exited=True,                 # stop once every p_two point has exited
+    step_two_action="full", deg_omega=500, omega_max=w_max,
+)
+
+flow = create.create("KPZ", model_params, "evo2", evo_params, evo_two_params)
+flow.rg_evolution(s_fin=-20, n_print=1000, n_save_params=100, n_save_f=1000)
+```
+
+For the dimensionless flow alone, use `"evo1"` and leave out the last argument:
+
+```python
+flow = create.create("KPZ", model_params, "evo1", evo_params)
+flow.rg_evolution(s_fin=-20, n_print=1000, n_save_params=100, n_save_f=1000)
+```
+
+Notes:
+- RG time is `s = ln(kappa/Lambda)`, and it runs from `0` down to `s_fin`, so `s_fin < 0` and `ds > 0`.
+- The output directory is created. If it already exists, `Evolution` asks on stdin `Path exists. Press y to continue` and exits on any other key, so a non-interactive run must write to a new directory.
+
+### Reading the results
+
+`flow.file_utils.read_par_bin(path, file, shape)` reads the binary files as an array of shape `(n_steps, *shape)`:
+
+| File | Written | Shape per record | Content |
+|---|---|---|---|
+| `f.bin` | every `n_save_f` steps | `(n_f, N_p, N_w)`, same as `fs_in` | dimensionless functions `f` on the `(p, w)` grid |
+| `flow_parameters.bin` | every `n_save_params` steps | `(1 + n_f + 1,)` | `[s, eta_1..eta_nf, g]` |
+| `exit_parameters.bin` | at each exit (evo2) | `(2 + n_f,)` | `[js_exit, s, X_dimful...]` (for KPZ `X_dimful = [D, nu]`) |
+| `G20_IC_two.npy` | overwritten at each exit (evo2) | `(Np_two, Nw_two)` | dimensionful correlation function `G(p_two, w_two)`, the initial condition for the large-p equation |
+| `I_dimful.bin` | every step (evo2, `step_two_action="full"`) | `(Np_two,)` | diffusion coefficient for the right-hand side of the large-p equation |
+| `I_inner.dat` | every step (evo2, `"full"`) | text, one value per line | the p-independent part of `I_dimful` |
+
+```python
+from flow.file_utils import read_par_bin
+from flow.models.grids import grid_log0
+
+path = "KPZ_1D_twogrids"
+p = grid_log0(p_min, p_max, N_p)          # the external grids used by the model
+w = grid_log0(w_min, w_max, N_w)
+f   = read_par_bin(path, "f.bin", (n_f, N_p, N_w))
+par = read_par_bin(path, "flow_parameters.bin", (n_f + 2,))
+s, eta_D, eta_nu, g = par.T
+G = np.load(path + "/G20_IC_two.npy")
+p_two, w_two = flow.p_two, flow.w_two
+```
+
+`usage_examples/my_plot_NLO.py` has plotting helpers (e.g. `contourf_Cpw`) used in the notebooks.
+
+## Parameters
+
+### `create.create(model_name, model_params, evolution_name, evolution_params, evolution_two_params=None)`
+
+| Argument | Values |
+|---|---|
+| `model_name` | `"KPZ"`, the only registered model (see `MODELS` in `flow/create.py`) |
+| `model_params` | tuple, passed positionally to the model class (below) |
+| `evolution_name` | `"evo1"`: dimensionless flow only. `"evo2"`: two grids scheme |
+| `evolution_params` | tuple `(IC, ds, path_save)` passed to `Evolution` |
+| `evolution_two_params` | dict, required for `"evo2"` (below) |
+
+### Model: `ModelKPZ(n_f, approximation, dim, params_grid_external, params_grid_internal, r, r_, Integral_extrapol="const")`
+
+| Parameter | Type / values | Meaning |
+|---|---|---|
+| `n_f` | `int`, `2` for KPZ | number of flowing functions and anomalous dimensions (`f_D, f_nu`; `eta_D, eta_nu`) |
+| `approximation` | `"NLO"` or `"LO"` | NLO keeps the frequency dependence of `f(p, w)`. LO uses `w = 0` only, so the frequency grid is `[0]` and `N_w = 1` |
+| `dim` | `int >= 1` | space dimension |
+| `params_grid_external` | `ParamsGridExternal` | grids of external momentum `p` and frequency `w` |
+| `params_grid_internal` | `ParamsGridInternal` | integration grids of loop momentum `q` and angle `theta` |
+| `r`, `r_` | callables of `q` | regulator and its derivative with respect to `q**2`, both written as functions of `q` (not `q**2`) |
+| `Integral_extrapol` | `"const"` (default) or `"quad"` | how `I_nu` is set at `p = 0`: `I_nu(p_1)`, or a fit `a + b p^2` through the first two points |
+
+#### `flow_dataclasses.ParamsGridExternal`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `N_p` | `100` | points in the `p` grid, including the prepended `p = 0` |
+| `p_min`, `p_max` | `1e-2`, `1e2` | smallest nonzero and largest `p` |
+| `N_w` | `1` | points in the `w` grid, including `w = 0` (NLO only) |
+| `w_min`, `w_max` | `0`, `0` | smallest nonzero and largest `w` (NLO only; set them for NLO) |
+| `scale` | `'log'` | only `'log'` is supported: `[0, geomspace(min, max, N-1)]` |
+
+#### `flow_dataclasses.ParamsGridInternal`
+
+Field order is `deg_q, q_max, deg_theta, theta_max`, so keyword arguments are safer.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `deg_q` | `40` | Gauss–Legendre nodes on `q in [0, q_max]` |
+| `q_max` | `10` | cut-off of the loop momentum: pick it where the regulator is negligible (`4` for the Wetterich-type regulators) |
+| `deg_theta` | `10` | Gauss–Legendre nodes on `theta in [0, theta_max]`; ignored for `dim = 1` |
+| `theta_max` | `pi` | upper angle; ignored for `dim = 1` |
+
+#### Regulators (`flow/regulator.py`)
+
+Each regulator `name(x, ...)` has a derivative `name_(x, ...)`. Wrap the extra arguments in a lambda, as in the quickstart.
+
+| Function | Form `r(q)` |
+|---|---|
+| `wett` | `1 / (exp(q^2) - 1)` (Wetterich) |
+| `wett_alpha(x, alpha)` | `alpha / (exp(q^2) - 1)` |
+| `wett_alpha_beta(x, alpha, beta)` | `alpha / (exp(beta q^2) - 1)` (used in the examples with `alpha=2, beta=1`) |
+| `exp_alpha_beta(x, alpha, beta)` | `alpha exp(-beta q^2)` |
+| `exp1(x, alpha, beta)` | `alpha exp(-beta q^2) / q^2` |
+| `francesco`, `float32francesco` | `2 / (exp(q^2) - 1)` with a `1/q^2` branch at small `q` (cut at `0.001`/`15`, or `0.02`/`7` for float32) |
+| `exp` | test regulator |
+
+### Dimensionless evolution: `Evolution(model, IC, ds, path_save)`
+
+| Parameter | Meaning |
+|---|---|
+| `IC` | `flow_dataclasses.IC_NLO(g_in, etas_in, fs_in)`: initial coupling (scalar), anomalous dimensions (shape `(n_f,)`), functions (shape `(n_f, N_p, N_w)`, with `N_w = 1` in LO) at `kappa = Lambda`. For KPZ: `fs_in = 1`, `etas_in = 0` |
+| `ds` | step in RG time `s` |
+| `path_save` | output directory |
+
+### `rg_evolution(s_fin, n_print, n_save_params, n_save_f)`
+
+| Parameter | Meaning |
+|---|---|
+| `s_fin` | final RG time, negative (e.g. `-20`). Ignored in evo2 when `s_fin_all_exited=True` |
+| `n_print` | print `s`, the etas, `g` and `-I(p=0, w=0)` every `n_print` steps |
+| `n_save_params` | write `flow_parameters.bin` every `n_save_params` steps |
+| `n_save_f` | write `f.bin` every `n_save_f` steps |
+
+### Two grids: `evolution_two_params` (dict for `Evo2KPZ`)
+
+| Key | Default | Meaning |
+|---|---|---|
+| `Np_two` | required | points in the dimensionful momentum grid `p_two` |
+| `p_min_two`, `p_max_two` | required | limits of `p_two` |
+| `match_w_to_p_two` | `False` | if `True`, `w_two = p_two**2` and `Nw_two`, `w_min_two`, `w_max_two` are ignored (needs `scale='log'`) |
+| `Nw_two`, `w_min_two`, `w_max_two` | required unless `match_w_to_p_two` | dimensionful frequency grid `w_two` |
+| `scale` | `'log'` | `'log'` or `'lin'` for `p_two` and `w_two` |
+| `p_exit` | required | exit criterion: point `p_two[i]` leaves the dimensionless grid when `p_two[i]/kappa` reaches `p_exit`. Snapped to the nearest point of the dimensionless `p` grid. Choose `p_exit >= q_max`, so that the regulator is negligible there |
+| `X_dimful_in` | required | dimensionful parameters at `kappa = Lambda`, shape `(n_f,)`: `[D, nu]` for KPZ |
+| `s_fin_all_exited` | `False` | if `True`, stop right after the last `p_two` point exits |
+| `step_two_action` | `'only_record_IC'` | `'only_record_IC'`: record `G20_IC_two` only. `'full'`: also compute `I_dimful` at each step |
+| `deg_omega` | required for `'full'` | Gauss–Legendre nodes on `omega in [0, omega_max]` |
+| `omega_max` | required for `'full'` | must satisfy `omega_max <= w_max` |
+
+## Numerical methods
+
+| Step | Method | Selectable |
+|---|---|---|
+| Integration in RG time | explicit Euler with fixed step `ds`, from `s = 0` down to `s_fin`; the dimensionful parameters `X` use the same step (`X += ds * eta * X`) | step `ds` only (Crank–Nicolson is planned, see Upcoming) |
+| Approximation of the flow equations | NLO (`f(p, w)`) or LO (`f(p)`); `f_lambda = 1` in all dimensions | `approximation` |
+| Loop integrals over `q`, `theta` | Gauss–Legendre quadrature on `[0, q_max]` × `[0, theta_max]` (`flow/models/maths_utils.py`); trivial angular grid in 1D; the internal frequency integral is done analytically | `deg_q`, `q_max`, `deg_theta`, `theta_max` |
+| Anomalous dimensions | the 2×2 linear system for `eta_D`, `eta_nu` is solved in closed form at each step | – |
+| Functions between grid points | cubic splines in `p` (`scipy.interpolate.CubicSpline`), extended beyond `p_max` (up to `p_max + q_max`) by a power law fitted on the last 5 points; in NLO, also cubic splines in `w` | grid sizes only |
+| Derivatives `p ∂f/∂p`, `w ∂f/∂w` | derivatives of those splines | – |
+| `I_nu` at `p = 0` | constant or quadratic extrapolation from `p_1`, `p_2` | `Integral_extrapol` |
+| Exit to the dimensionful grid | point `p_two[i]` exits at `kappa = p_two[i]/p_exit`; `f(w)` at `p_exit` is taken from the `w` spline, and beyond `w_max` it is continued by a power law (mean slope of the last 5 `w` points) | `p_exit`, `p_two`/`w_two` grids |
+| `I_dimful` (evo2, `'full'`) | `f(q, omega)` from a bicubic `RectBivariateSpline`, then Gauss–Legendre over `q`, `theta`, `omega` | `step_two_action`, `deg_omega`, `omega_max` |
+
+The integrals are vectorised with NumPy. Numba and JAX versions of the KPZ kernels (`kpz_numbafunc.py`, `kpz_jaxfunc.py`, `model_kpz_jit.py`, `maths_utils_numba.py`, `maths_utils_jax.py`) are in `flow/models/` but are not used: `flow/models/__init__.py` imports the NumPy `ModelKPZ`.
+
+## Adding a model
+
+1. In `flow/models/`, subclass `ModelBase` and implement `Integral_pfixed_dD_LO`, `Integral_pfixed_dD_NLO`, `f_rhs_logder_calc_NLO`, `eta_calc`, `g_rhs_calc`, `calc_upd` and `Integral_upd` (see `model_kpz.py`).
+2. For the two grids scheme, in `flow/evolution_two/` subclass `EvolutionTwoBase` and implement `update_IC_two`, `calc_I_inner` and `calc_I_dimful` (see `evo2_kpz.py`).
+3. Register both classes in `MODELS` and `EVO_TWO` in `flow/create.py`.
+
 ## Upcoming
 
 dev:
