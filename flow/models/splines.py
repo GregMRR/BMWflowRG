@@ -2,6 +2,9 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 
 
+B_MAX = 10.  # bound on the exponent of the power-law tail beyond p_max
+
+
 def splines_pplusq(f: np.ndarray, Nw: int, p: np.ndarray,
                    p_max_plus_q: np.ndarray,
                    p_max_plus_q_div_p_max: np.ndarray):
@@ -30,8 +33,12 @@ def splines_pplusq(f: np.ndarray, Nw: int, p: np.ndarray,
 
     for iw in range(Nw):
         f_m = f[-1, iw]
-        f_m_ = np.gradient(f[-5:, iw], p[-5:])[-1]
-        b = p[-1] * f_m_ / f_m
+        tail = f[-5:, iw]
+        if np.all(tail > 0) or np.all(tail < 0):
+            # power-law tail f_m (p/p_max)^b, |b| <= B_MAX
+            b = np.clip(p[-1] * np.gradient(tail, p[-5:])[-1] / f_m, -B_MAX, B_MAX)
+        else:
+            b = 0.  # tail crosses or touches zero (e.g. f = 0 initially): no power law, constant
         f_right = f_m * p_max_plus_q_div_p_max ** b
 
         combined_p = np.concatenate([p, p_max_plus_q])

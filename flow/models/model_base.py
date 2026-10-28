@@ -304,7 +304,8 @@ class ModelBase(ABC):
             "r", "r_", "p_max_plus_q", "p_max_plus_q_div_p_max",
             "w_broad", "q_broad", "q_broad2", "rq_broad", "rq__broad",
             "sin_d2_broad", "p_broad", "p_broad2", "pqcos_broad",
-            "Q_broad2", "Q_broad", "rQ_broad"
+            "Q_broad2", "Q_broad", "rQ_broad",
+            *getattr(self, "_print_excluded", ())
         ]
         for key, value in vars(self).items():
             if key not in excluded:
@@ -338,6 +339,25 @@ class ModelBase(ABC):
 
         for i in range(self.n_f):
             self.f_spl_w[i, :] = splines.splines(f[i, :, :], self.Np, self.w)
+
+    def calc_upd_LO(self):
+        """Values of f's at w=0 on the q-grid and the Q-grid, and their p-derivative on the q-grid."""
+        for i in range(self.n_f):
+            self.fq[i] = self.f_spl[i, 0](self.q)
+            self.fQ[i] = self.f_spl[i, 0](self.Q_broad)
+            self.fq_[i] = self.f_spl[i, 0].derivative()(self.q)
+
+    def _fill_p0(self, row: np.ndarray, mode: str):
+        """Fills row[0] (p = 0) of an integral already divided by p^2, shape (Np, Nw), in place:
+        'const': row[0] = row[1]; 'quad': row = a + b*p**2 through p[1], p[2], row[0] = a."""
+        if mode == 'const':
+            row[0] = row[1]
+        elif mode == 'quad':
+            p1_2, p2_2 = self.p[1] ** 2, self.p[2] ** 2
+            b = (row[2] - row[1]) / (p2_2 - p1_2)
+            row[0] = row[1] - b * p1_2
+        else:
+            raise ValueError('p = 0 fill must be either "const" or "quad".')
 
     @abstractmethod
     def Integral_pfixed_dD_LO(self, g, eta):

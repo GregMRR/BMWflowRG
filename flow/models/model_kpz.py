@@ -263,10 +263,4 @@ class ModelKPZ(ModelBase):
         self.Integral[1, 0, :] = a
 
     def calc_upd(self):
-        for i in range(self.n_f):
-            ## Calculate f's at w=0 on q-grid and Q-grid:
-            self.fq[i] = self.f_spl[i, 0](self.q)
-            self.fQ[i] = self.f_spl[i, 0](self.Q_broad)
-
-            ## Calculate f's derivative at w=0 on q-grid
-            self.fq_[i] = self.f_spl[i, 0].derivative()(self.q)
+        self.calc_upd_LO()
