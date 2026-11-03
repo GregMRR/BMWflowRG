@@ -28,8 +28,9 @@ class Evolution:
     g: REAL
         Value of flowing dimesionless coupling at current RG time.
     eta: np.ndarray
-        Array of size model.n_f of flowing exponents at current RG time; eg,
-        for KPZ, [eta_D, eta_nu].
+        Array of size model.n_eta of flowing exponents at current RG time; eg,
+        for KPZ, [eta_D, eta_nu] (n_eta = n_f, except for generated models
+        with functions without eta).
     path: str
         Where to save the results.
     f_file:
@@ -53,7 +54,7 @@ class Evolution:
             Model for which RG flow is integrated.
         IC: flow_dataclasses.IC_NLO
             Initial condition for the RG equations (at kappa=Lambda):
-            g_in is a scalar, etas_in is np.ndarray of size model.n_f
+            g_in is a scalar, etas_in is np.ndarray of size model.n_eta
             (eg, for KPZ, [eta_D, eta_nu]), fs_in is np.ndarray of
             shape (model.n_f, model.Np, model.Nw) for dimensionless
             flowing functions (eg, for KPZ, f_D, f_nu).
@@ -110,7 +111,7 @@ class Evolution:
         """ Checks consistency of shapes of the flow parameters."""
 
         f_sh = (self.model.n_f, *self.model.external_grid_shape)
-        eta_sh = (self.model.n_f,)
+        eta_sh = (self.model.n_eta,)
 
         check_f = (self.f.shape == f_sh)
         check_eta = (self.eta.shape == eta_sh)

@@ -97,7 +97,8 @@ def test_create_accepts_a_generated_module(generated_path, tmp_path):
 def test_contract_checks(generated_path):
     from flow.models.model_generated import load_generated
     mod = load_generated(generated_path)
-    for attr, value, args in [("CONTRACT_VERSION", 1, ("LO", 1)), ("COUPLINGS", ("alamk",), ("LO", 1)),
+    for attr, value, args in [("CONTRACT_VERSION", 1, ("LO", 1)), ("CONTRACT_VERSION", 2, ("LO", 1)),
+                              ("COUPLINGS", ("alamk",), ("LO", 1)),
                               ("FIXED_DIMENSION", 2, ("LO", 1))]:
         old = getattr(mod, attr)
         setattr(mod, attr, value)

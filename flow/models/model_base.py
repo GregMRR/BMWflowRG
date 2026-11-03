@@ -359,6 +359,11 @@ class ModelBase(ABC):
         else:
             raise ValueError('p = 0 fill must be either "const" or "quad".')
 
+    @property
+    def n_eta(self) -> int:
+        """Number of etas (length of the eta vector): one per function here; generated models may have fewer."""
+        return self.n_f
+
     @abstractmethod
     def Integral_pfixed_dD_LO(self, g, eta):
         """Calculates Integrals in the rhs of dsf in LO. Works with whole p grid."""
