@@ -1,3 +1,6 @@
+"""Base class of the models: grids, regulators, splines and the generic parts of the flow equations.
+
+A model subclasses `ModelBase` and implements the model-specific right-hand sides."""
 from abc import ABC, abstractmethod
 
 from .. import flow_dataclasses
@@ -298,6 +301,7 @@ class ModelBase(ABC):
         self.fq_ = np.zeros((self.n_f, self.degq))
 
     def print_class_attributes(self):
+        """Print the model attributes, except the large work arrays; arrays are shown by shape and first and last values."""
         print("=== Model has the following attributes: ===")
         excluded = [
             "fq", "fQ", "q2", "qd1", "qd3", "qd5",
@@ -389,6 +393,19 @@ class ModelBase(ABC):
         """Calculates r.h.s. of f's in NLO."""
 
     def f_rhs_calc(self, eta, f):
+        """Right-hand side of the flow of the functions: eta f + the logarithmic-derivative terms + the loop integrals.
+
+        Parameters
+        ----------
+        eta : np.ndarray
+            Anomalous dimensions, shape (n_f,).
+        f : np.ndarray
+            Functions on the external grid, shape (n_f, N_p, N_w).
+
+        Returns
+        -------
+        np.ndarray
+            Same shape as f."""
         eta_f = f.copy()
         eta_f *= eta[:, None, None]
         dim_flow = eta_f + self.f_rhs_logder_calc(eta)

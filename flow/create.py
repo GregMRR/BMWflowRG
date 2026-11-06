@@ -1,3 +1,4 @@
+"""The factory: sets up a given evolution (one grid or two grids) for a given model."""
 from .flow_types import REAL
 from .flow_dataclasses import *
 

@@ -1,3 +1,4 @@
+"""Reading the binary output files written by the evolutions."""
 import numpy as np
 from .flow_types import REAL
 

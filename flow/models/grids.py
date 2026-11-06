@@ -1,3 +1,4 @@
+"""Construction of the external momentum and frequency grids."""
 import numpy as np
 
 def grid_log0(min, max, N):

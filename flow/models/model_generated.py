@@ -125,6 +125,7 @@ class ModelGenerated(ModelBase):
 
     @property
     def n_eta(self) -> int:
+        """Number of etas: the module's functions with an eta (`ETAS` entries that are not None)."""
         return len(self.eta_names)
 
     ##########################################################################
@@ -172,9 +173,11 @@ class ModelGenerated(ModelBase):
         return np.array(I)
 
     def Integral_pfixed_dD_NLO(self, g, eta):
+        """Not available: generated models are LO only (raises NotImplementedError)."""
         raise NotImplementedError("Generated models are LO only.")
 
     def f_rhs_logder_calc_NLO(self, eta):
+        """Not available: generated models are LO only (raises NotImplementedError)."""
         raise NotImplementedError("Generated models are LO only.")
 
     def Integral_upd(self, g, eta):
@@ -214,7 +217,9 @@ class ModelGenerated(ModelBase):
         return eta
 
     def g_rhs_calc(self, g, eta):
+        """Right-hand side of the coupling flow, from the generated module's `beta`."""
         return self.module.beta((g,), eta, self.dim)[0]
 
     def calc_upd(self):
+        """Update the values needed in the calculations (LO: `calc_upd_LO`)."""
         self.calc_upd_LO()

@@ -1,3 +1,6 @@
+"""Base class of the dimensionful (second-grid) evolution of the two-grids scheme.
+
+It records the initial condition of the large-p equation when each p_two point exits the dimensionless grid."""
 import numpy as np
 from abc import ABC, abstractmethod
 
@@ -270,6 +273,7 @@ class EvolutionTwoBase(ABC):
     ##########################################################################
 
     def print_class_attributes(self):
+        """Print every attribute of the second-grid evolution; arrays are shown by shape and first and last values."""
         # for k,v in params_two.items():
         #     print(k, ":", v)
         # print('X_dimful =', self.X_dimful)
@@ -293,6 +297,7 @@ class EvolutionTwoBase(ABC):
 
     @staticmethod
     def print_heading():
+        """Print the header line of the table that `print_line` fills (with js_exit and X_dimful)."""
         print("s \t\t|\t\t eta's \t\t|\t  g \t|\t -I's[0,0] \t\t||\t js_exit \t|\t X_dimful")
 
     def print_line(self):
@@ -312,12 +317,14 @@ class EvolutionTwoBase(ABC):
         )
 
     def close_files(self):
+        """Close the output files: exit parameters, and with step_two_action 'full' also I_dimful and I_inner."""
         self.exit_par_file.close()
         if self.step_two_action == "full":
             self.I_dimful_file.close()
             self.I_inner_file.close()
 
     def write_files_two(self):
+        """Write the exit records: overwrite `G20_IC_two.npy` and append [js_exit, s, X_dimful...] to `exit_parameters.bin`."""
         ## Overwrite the file with the updated array
         np.save(self.path + '/G20_IC_two.npy', self.G20_IC_two)
         exit_param = np.concatenate([
@@ -345,6 +352,9 @@ class EvolutionTwoBase(ABC):
         return b_avg  ##shape=(n_f,)
 
     def update_f_IC_two(self):
+        """Record the dimensionful functions of the exiting point on the w_two grid.
+
+        Where w_two/(kappa^2 nu) <= w_max the w spline at p_exit is used; beyond it, a power-law continuation."""
         kappa = np.exp(self.evo.s)  ## *Lambda, Lambda = 1 in the code
         ipe = self.ip_exit
 

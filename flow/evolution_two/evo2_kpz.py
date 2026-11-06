@@ -1,3 +1,4 @@
+"""The second-grid evolution for the KPZ model."""
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
 

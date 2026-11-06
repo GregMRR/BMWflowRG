@@ -1,3 +1,4 @@
+"""The Kardar-Parisi-Zhang (KPZ) model in the NLO or LO approximation (NumPy implementation)."""
 import numpy as np
 
 from .. import flow_dataclasses
@@ -50,6 +51,7 @@ class ModelKPZ(ModelBase):
     ##########################################################################
 
     def Integral_pfixed_dD_LO(self, g, eta):
+        """Loop integrals of the flows of f_D, f_nu in LO (w = 0), on the whole p grid."""
         p2 = self.p_broad2
         q2 = self.q_broad2
 
@@ -104,6 +106,7 @@ class ModelKPZ(ModelBase):
         return np.array([I_D, I_nu])
 
     def Integral_pfixed_dD_NLO(self, g, eta):
+        """Loop integrals of the flows of f_D, f_nu in NLO, on the whole (p, w) grid."""
         ## (Np, Nw,  degq, degtheta)
         p2 = self.p_broad2
         w = self.w_broad
@@ -178,6 +181,7 @@ class ModelKPZ(ModelBase):
         return rhs_pder + rhs_wder
 
     def eta_calc(self, g):
+        """Anomalous dimensions [eta_D, eta_nu] from f_D(0) = f_nu(0) = 1: the 2x2 linear system solved in closed form."""
         ## Powers of q
         q2 = self.q2
         qd1 = self.qd1
@@ -233,6 +237,7 @@ class ModelKPZ(ModelBase):
         return np.array([etaD, etaNu])
 
     def g_rhs_calc(self, g, eta):
+        """Right-hand side of the coupling flow, g (dim - 2 - eta_D + 3 eta_nu); used as g -= rhs ds."""
         rhs = g * (self.dim - 2 - eta[0] + 3 * eta[1])
         return rhs
 
@@ -263,4 +268,5 @@ class ModelKPZ(ModelBase):
         self.Integral[1, 0, :] = a
 
     def calc_upd(self):
+        """Update the values needed in the calculations (`calc_upd_LO`)."""
         self.calc_upd_LO()

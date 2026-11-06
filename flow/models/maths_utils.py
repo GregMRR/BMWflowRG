@@ -1,3 +1,4 @@
+"""Gauss-Legendre quadrature over the loop momentum q and angle theta (NumPy)."""
 import numpy as np
 
 

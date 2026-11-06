@@ -1,0 +1,13 @@
+# docgen config: python3 tools/docgen.py reference | check | html DIR
+
+[reference]
+# The NumPy code path. The unused Numba/JAX variants (kpz_*func.py, model_kpz_jit.py, maths_utils_numba/jax.py) are left out.
+sources = [
+  "flow/create.py", "flow/evolution.py", "flow/flow_dataclasses.py", "flow/regulator.py",
+  "flow/models/model_base.py", "flow/models/model_kpz.py", "flow/models/model_generated.py",
+  "flow/evolution_two/evolution_two_base.py", "flow/evolution_two/evo2_kpz.py",
+  "flow/models/grids.py", "flow/models/splines.py", "flow/models/maths_utils.py", "flow/file_utils.py",
+]
+
+[site]
+title = "BMWflow"

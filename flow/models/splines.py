@@ -1,3 +1,4 @@
+"""Cubic splines of the flowing functions and their power-law continuation beyond the grid."""
 import numpy as np
 from scipy.interpolate import CubicSpline
 

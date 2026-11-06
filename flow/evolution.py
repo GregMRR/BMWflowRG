@@ -1,3 +1,4 @@
+"""Integration of the dimensionless flow equations in RG time (class `Evolution`)."""
 import sys
 import os
 
@@ -130,6 +131,7 @@ class Evolution:
 
     @staticmethod
     def print_heading():
+        """Print the header line of the table that `print_line` fills."""
         print("s \t\t|\t\t eta's \t\t|\t  g \t|\t -I's[0,0]")
 
     def print_line(self):
@@ -156,10 +158,12 @@ class Evolution:
         self.f.tofile(self.f_file)
 
     def close_files(self):
+        """Close the output files of the flow parameters and of the functions."""
         self.par_file.close()
         self.f_file.close()
 
     def print_class_attributes(self):
+        """Print every attribute of the evolution; arrays are shown by shape and first and last values."""
         print("=== Evolution has the following attributes: ===")
         for key, value in vars(self).items():
             # if key in ('model', 'ds', 'g', 'eta', 'path',
