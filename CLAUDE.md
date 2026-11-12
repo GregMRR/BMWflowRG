@@ -11,8 +11,8 @@ Main author: Liubov Gosteva; GitHub `GregMRR/BMWflowRG`.
 
 ## Layout
 - `flow/create.py` - factory: `create(model_name, model_params, "evo1"|"evo2", ...)`; registries `MODELS`, `EVO_TWO`.
-- `flow/models/` - `ModelBase` (grids, splines, generic RHS) → `ModelKPZ` (NumPy, the one in use), `ModelGenerated` (LO modules
-  from FRGscalarMSR). `*_numba*`, `*_jax*`, `model_kpz_jit.py`: unused variants, not imported.
+- `flow/models/` - `ModelBase` (grids, splines, generic RHS) → `ModelKPZ` (NumPy, the one in use), `ModelGenerated` (LO and NLO modules
+  from FRGscalarMSR, contract v3/v4). `*_numba*`, `*_jax*`, `model_kpz_jit.py`: unused variants, not imported.
 - `flow/evolution.py` - dimensionless Euler integration; `flow/evolution_two/` - second (dimensionful) grid.
 - `docs/` - `STATUS.md`, `guide/`, `reference/` (GENERATED from docstrings; `docs/docgen.toml` lists the sources).
 - `notes/` - LaTeX derivations of the LO/NLO equations. `usage_examples/` - notebooks.
@@ -21,7 +21,8 @@ Main author: Liubov Gosteva; GitHub `GregMRR/BMWflowRG`.
 - New model: subclass `ModelBase` (+ `EvolutionTwoBase` for evo2), register in `flow/create.py` (`docs/guide/adding-a-model.md`).
 - Generated-module format: `flow/models/model_generated.py` reads FRGscalarMSR's `ExportPython` output; the contract
   (`CONTRACT_VERSION`) is FRGscalarMSR's `docs/handoff/BMWflow_LO.md`. A format change updates both repos and re-vendors
-  `tests/fixtures/KPZ_LO.py` and `tests/fixtures/KPZLambda_LO.py`.
+  `tests/fixtures/` (`KPZ_LO.py`, `KPZLambda_LO.py`; NLO: `KPZ_NLO.py`, `KPZLambda_NLO.py`, `KPZLambda_NLO_points.json` from
+  FRGscalarMSR `benchmarks/KPZNLO/export.wl`).
 - A public symbol's docs: its docstring (NumPy style); features and limits: `docs/STATUS.md`.
 
 ## Gotchas
